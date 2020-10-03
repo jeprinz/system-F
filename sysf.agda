@@ -53,22 +53,30 @@ subTC {suc TC} (step itc) = suc (subTC itc)
 -- fact1 end = {!   !}
 -- fact1 (step itc) = {!   !}
 
--- TODO: toSub should be of any TypeContext prefix of TC.
--- TODO: implement prefix
+-- TODO: I'm so fucking stupid, TC' needs to be same as itc...
 
 data _prefixTC_ : TypeContext → TypeContext → Set where
   same : ∀{TC} → TC prefixTC TC
   next : ∀{TC TC'} → TC prefixTC TC' → TC prefixTC (suc TC')
 
-subType : ∀{TC} → (itc : InTypeCtx TC) → (toSub : Type (subTC itc)) → Type TC → Type (subTC itc)
-subType itc toSub (var itc') = {!   !}
-subType itc toSub (4all T) = 4all (subType (step itc) ({!   !} {-weakenType toSub-}) T)
--- subType itc (4all T) = 4all (subst (λ tc → Type tc) (fact1 itc) (subType (step itc) T))
-subType itc toSub (arrow A B) = arrow (subType itc toSub A) (subType itc toSub B)
+-- read "TC at", not "T cat"
+TCat : ∀{TC} → (itc : InTypeCtx TC) → TypeContext
+TCat {suc Γ} end = Γ
+TCat {suc Γ} (step itc) = TCat itc
 
-subContext : ∀{TC} → (itc : InTypeCtx TC) → (toSub : Type (subTC itc))→ Context TC → Context (subTC itc)
+subType : ∀{TC} → (itc : InTypeCtx TC)
+  → (toSub : Type (TCat itc)) → Type TC → Type (subTC itc)
+subType itc toSub (var itc') = {!   !}
+subType itc toSub (4all T) = 4all (subType (step itc) toSub T)
+-- subType itc (4all T) = 4all (subst (λ tc → Type tc) (fact1 itc) (subType (step itc) T))
+subType itc toSub (arrow A B)
+  = arrow (subType itc toSub A) (subType itc toSub B)
+
+subContext : ∀{TC} → (itc : InTypeCtx TC)
+  → (toSub : Type (TCat itc)) → Context TC → Context (subTC itc)
 subContext itc toSub EmptyCtx = EmptyCtx
-subContext itc toSub (ConsCtx Γ T) = ConsCtx (subContext itc toSub Γ) (subType itc toSub T)
+subContext itc toSub (ConsCtx Γ T)
+  = ConsCtx (subContext itc toSub Γ) (subType itc toSub T)
 
 data Ualue where
   var : ∀{TC Γ T} → InCtx {TC} Γ T → Ualue Γ T

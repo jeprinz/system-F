@@ -41,35 +41,34 @@ data InCtx : {Δ₁ : Δ} → Γ Δ₁ → Set where
 ΔweakenICX (step icx) = step (ΔweakenICX icx)
 
 -- really just subtracts one
-subTC : ∀{Δ₁} → InTypeCtx Δ₁ → Δ
-subTC {suc Δ₁} end = Δ₁
-subTC {suc Δ₁} (step itc) = suc (subTC itc)
+ΔsubΔ : ∀{Δ₁} → InTypeCtx Δ₁ → Δ
+ΔsubΔ {suc Δ₁} end = Δ₁
+ΔsubΔ {suc Δ₁} (step itc) = suc (ΔsubΔ itc)
 
 -- data _prefixTC_ : Δ → Δ → Set where
 --   same : ∀{Δ₁} → Δ₁ prefixTC Δ₁
 --   next : ∀{Δ₁ Δ₁'} → Δ₁ prefixTC Δ₁' → Δ₁ prefixTC (suc Δ₁')
 
--- read "Δ₁ at", not "T cat"
-TCat : ∀{Δ₁} → (itc : InTypeCtx Δ₁) → Δ
-TCat {suc Δ₁} end = Δ₁
-TCat {suc Δ₁} (step itc) = TCat itc
+Δat : ∀{Δ₁} → (itc : InTypeCtx Δ₁) → Δ
+Δat {suc Δ₁} end = Δ₁
+Δat {suc Δ₁} (step itc) = Δat itc
 
-subType : ∀{Δ₁} → (itc : InTypeCtx Δ₁)
-  → (toSub : A (TCat itc)) → A Δ₁ → A (subTC itc)
-subType end toSub (var end) = toSub
-subType end toSub (var (step itc')) = var itc'
-subType (step itc) toSub (var end) = var end
-subType (step itc) toSub (var (step itc')) = ΔweakenA (subType itc toSub (var itc'))
-subType itc toSub (4all T) = 4all (subType (step itc) toSub T)
-subType itc toSub (A ⇒ B)
-  = (subType itc toSub A) ⇒ (subType itc toSub B)
-subType itc toSub 𝟚 = 𝟚
+ΔsubA : ∀{Δ₁} → (itc : InTypeCtx Δ₁)
+  → (toSub : A (Δat itc)) → A Δ₁ → A (ΔsubΔ itc)
+ΔsubA end toSub (var end) = toSub
+ΔsubA end toSub (var (step itc')) = var itc'
+ΔsubA (step itc) toSub (var end) = var end
+ΔsubA (step itc) toSub (var (step itc')) = ΔweakenA (ΔsubA itc toSub (var itc'))
+ΔsubA itc toSub (4all T) = 4all (ΔsubA (step itc) toSub T)
+ΔsubA itc toSub (A ⇒ B)
+  = (ΔsubA itc toSub A) ⇒ (ΔsubA itc toSub B)
+ΔsubA itc toSub 𝟚 = 𝟚
 
-subContext : ∀{Δ₁} → (itc : InTypeCtx Δ₁)
-  → (toSub : A (TCat itc)) → Γ Δ₁ → Γ (subTC itc)
-subContext itc toSub EmptyCtx = EmptyCtx
-subContext itc toSub (ConsCtx Γ₁ T)
-  = ConsCtx (subContext itc toSub Γ₁) (subType itc toSub T)
+ΔsubΓ : ∀{Δ₁} → (itc : InTypeCtx Δ₁)
+  → (toSub : A (Δat itc)) → Γ Δ₁ → Γ (ΔsubΔ itc)
+ΔsubΓ itc toSub EmptyCtx = EmptyCtx
+ΔsubΓ itc toSub (ConsCtx Γ₁ T)
+  = ConsCtx (ΔsubΓ itc toSub Γ₁) (ΔsubA itc toSub T)
 
 Tat : ∀{Δ₁ Γ₁} → InCtx {Δ₁} Γ₁ → A Δ₁
 Tat (end {_} {_} {T}) = T
@@ -83,42 +82,54 @@ data M : {Δ₁ : Δ} → Γ Δ₁ → A Δ₁ → Set where
   app : ∀{Δ₁ Γ₁ A B} → M {Δ₁} Γ₁ (A ⇒ B) → M Γ₁ A → M Γ₁ B
   appU : ∀{Δ₁ Γ₁ T} → M {Δ₁} Γ₁ (4all T)
     → (A : A Δ₁)
-    → M {Δ₁} Γ₁ (subType end A T)
+    → M {Δ₁} Γ₁ (ΔsubA end A T)
   Y : ∀{Δ₁ Γ₁} → M {Δ₁} Γ₁ 𝟚
   N : ∀{Δ₁ Γ₁} → M {Δ₁} Γ₁ 𝟚
+
+ΓsubΓ : ∀{Δ₁} → (Γ₁ : Γ Δ₁) → (icx : InCtx Γ₁) → Γ Δ₁
+ΓsubΓ (ConsCtx Γ₁ T) end = Γ₁
+ΓsubΓ (ConsCtx Γ₁ T) (step icx) = ConsCtx (ΓsubΓ Γ₁ icx) T
+
+fact : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → ∀{icx}
+  → ΔweakenΓ (ΓsubΓ Γ₁ icx) ≡ ΓsubΓ (ΔweakenΓ Γ₁) (ΔweakenICX icx)
+fact = {!   !}
+
+-- Need to prove various things commute
+
+fact2 : ∀{Δ₁} → (A₂ : A Δ₁) → ∀(T)
+    → (ΔsubA end (ΔweakenA (ΔsubA end A₂ T)) (ΔweakenA T)) ≡ (ΔweakenA (ΔsubA end A₂ T))
+fact2 A₂ T = {!   !}
+
+fact3 : ∀{Δ₁ Γ₁} → ∀(icx) → Tat (ΔweakenICX icx) ≡ ΔweakenA (Tat {Δ₁} {Γ₁} icx)
+fact3 end = refl
+fact3 (step icx) = fact3 icx
 
 ΔweakenM : ∀{Δ₁ Γ₁ A₁} → M {Δ₁} Γ₁ A₁ → M (ΔweakenΓ Γ₁) (ΔweakenA A₁)
 ΔweakenM (lambda M₁) = lambda (ΔweakenM M₁)
 ΔweakenM (Tlambda M₁) = Tlambda (ΔweakenM M₁) -- sneaky types
-ΔweakenM (var icx) = {!   !}
+ΔweakenM {Δ₁} {Γ₁} (var icx) = subst (λ A₁ → M (ΔweakenΓ Γ₁) A₁) (fact3 icx) (var (ΔweakenICX icx))
 ΔweakenM (app M₁ M₂) = app (ΔweakenM M₁) (ΔweakenM M₂)
-ΔweakenM (appU M₁ A₁) = appU (ΔweakenM M₁) (ΔweakenA A₁)
+ΔweakenM {_} {Γ₁} {A₁} (appU {_} {_} {T} M₁ A₂) = let x = appU (ΔweakenM M₁) (ΔweakenA A₁)
+                        in subst (λ Γ' → M (ΔweakenΓ Γ₁) Γ') (fact2 A₂ T) x
+                        -- TODO: maybe apply fact2 to an arg rather than whole thing?
 ΔweakenM Y = Y
 ΔweakenM N = N
-
-subVContext : ∀{Δ₁} → (Γ₁ : Γ Δ₁) → (icx : InCtx Γ₁) → Γ Δ₁
-subVContext (ConsCtx Γ₁ T) end = Γ₁
-subVContext (ConsCtx Γ₁ T) (step icx) = ConsCtx (subVContext Γ₁ icx) T
 
 Γat : ∀{Δ₁ Γ₁} → InCtx {Δ₁} Γ₁ → Γ Δ₁
 Γat {_} {ConsCtx Γ₁ T} end = Γ₁
 Γat (step itc) = Γat itc
 
-fact : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → ∀{icx}
-  → ΔweakenΓ (subVContext Γ₁ icx) ≡ subVContext (ΔweakenΓ Γ₁) (ΔweakenICX icx)
-fact = {!   !}
-
-sub : ∀{Δ₁ T} → {Γ₁ : Γ Δ₁} → (icx : InCtx Γ₁) → (M (Γat icx) (Tat icx))
-  → (M Γ₁ T) → (M (subVContext Γ₁ icx) T)
-sub icx M₁ (lambda M₂) = lambda (sub (step icx) M₁ M₂)
-sub {Δ₁} {T} {Γ₁} icx M₁ (Tlambda M₂) -- = Tlambda {!   !}
-  = let x = (sub {suc Δ₁} {ΔweakenA T} {ΔweakenΓ Γ₁} (ΔweakenICX icx) {!   !} {!   !})
+ΓsubM : ∀{Δ₁ T} → {Γ₁ : Γ Δ₁} → (icx : InCtx Γ₁) → (M (Γat icx) (Tat icx))
+  → (M Γ₁ T) → (M (ΓsubΓ Γ₁ icx) T)
+ΓsubM icx M₁ (lambda M₂) = lambda (ΓsubM (step icx) M₁ M₂)
+ΓsubM {Δ₁} {T} {Γ₁} icx M₁ (Tlambda M₂) -- = Tlambda {!   !}
+  = let x = (ΓsubM {suc Δ₁} {ΔweakenA T} {ΔweakenΓ Γ₁} (ΔweakenICX icx) {!   !} {!   !})
     in (Tlambda {!   !} )
-sub icx M₁ (var icx₁) = {!   !}
-sub icx M₁ (app M₂ M₃) = app (sub icx M₁ M₂) (sub icx M₁ M₃)
-sub icx M₁ (appU M₂ A₁) = {!   !}
-sub icx M₁ Y = Y
-sub icx M₁ N = N
+ΓsubM icx M₁ (var icx₁) = {!   !}
+ΓsubM icx M₁ (app M₂ M₃) = app (ΓsubM icx M₁ M₂) (ΓsubM icx M₁ M₃)
+ΓsubM icx M₁ (appU M₂ A₁) = {!   !}
+ΓsubM icx M₁ Y = Y
+ΓsubM icx M₁ N = N
 
 -- Dynamics:
 
@@ -128,7 +139,7 @@ data _↦_ : ∀{Δ₁ Γ₁ A₁} → M {Δ₁} Γ₁ A₁ → M {Δ₁} Γ₁ 
       ----------------------------
       → app M₁ M₂ ↦ app M₁' M₂
   -- APP-LAM : ∀{}
-    -- → app (lam M₁) M₁ ↦ sub
+    -- → app (lam M₁) M₁ ↦ ΓsubM
 
 data _final : ∀{Δ₁ Γ₁ A₁} → M {Δ₁} Γ₁ A₁ → Set where
   YES : ∀{Δ₁ Γ₁} → Y {Δ₁} {Γ₁} final

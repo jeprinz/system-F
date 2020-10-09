@@ -96,21 +96,42 @@ fact = {!   !}
 
 -- Need to prove various things commute
 
-fact2 : ∀{Δ₁} → (A₂ : A Δ₁) → ∀(T)
-    → (ΔsubA end (ΔweakenA (ΔsubA end A₂ T)) (ΔweakenA T)) ≡ (ΔweakenA (ΔsubA end A₂ T))
-fact2 A₂ T = {!   !}
-
 fact3 : ∀{Δ₁ Γ₁} → ∀(icx) → Tat (ΔweakenICX icx) ≡ ΔweakenA (Tat {Δ₁} {Γ₁} icx)
 fact3 end = refl
 fact3 (step icx) = fact3 icx
+
+lemma1 : ∀{Δ₁} → {X Y Z Q : A Δ₁} → X ≡ Y → Z ≡ Q → (X ⇒ Z) ≡ (Y ⇒ Q)
+lemma1 refl refl = refl
+
+ap : ∀{l k} → {T : Set l} → {Y : Set k} → {x y : T}
+  → (f : T → Y) → (p : x ≡ y) → f x ≡ f y
+ap f refl = refl
+
+-- fact4g : ∀{Δ₁ itc} → {Γ₁ : Γ Δ₁} → (A₂ : A Δ₁) → ∀(T)
+  -- → ΔsubA itc (ΔweakenA A₂) (ΔweakenA T) ≡ ΔweakenA (ΔsubA itc A₂ T)
+-- fact4g = ?
+-- TODO: need to generalize to above, but then need general weaken... fuck.
+fact4 : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → (A₂ : A Δ₁) → ∀(T)
+  → ΔsubA end (ΔweakenA A₂) (ΔweakenA T) ≡ ΔweakenA (ΔsubA end A₂ T)
+fact4 A₂ (var x) = {!   !}
+fact4 {Δ₁} {Γ₁} A₂ (4all T) = let eq = fact4 {suc Δ₁} {ΔweakenΓ Γ₁} (ΔweakenA A₂) T
+                    in ap 4all {!   !}
+fact4 {Δ₁} {Γ₁} A₂ (T₁ ⇒ T₂) = let eq1 = fact4 {Δ₁} {Γ₁} A₂ T₁
+                      in let eq2 = fact4 {Δ₁} {Γ₁} A₂ T₂
+                      in lemma1 eq1 eq2
+fact4 A₂ 𝟚 = refl
+
 
 ΔweakenM : ∀{Δ₁ Γ₁ A₁} → M {Δ₁} Γ₁ A₁ → M (ΔweakenΓ Γ₁) (ΔweakenA A₁)
 ΔweakenM (lambda M₁) = lambda (ΔweakenM M₁)
 ΔweakenM (Tlambda M₁) = Tlambda (ΔweakenM M₁) -- sneaky types
 ΔweakenM {Δ₁} {Γ₁} (var icx) = subst (λ A₁ → M (ΔweakenΓ Γ₁) A₁) (fact3 icx) (var (ΔweakenICX icx))
 ΔweakenM (app M₁ M₂) = app (ΔweakenM M₁) (ΔweakenM M₂)
-ΔweakenM {_} {Γ₁} {A₁} (appU {_} {_} {T} M₁ A₂) = let x = appU (ΔweakenM M₁) (ΔweakenA A₁)
-                        in subst (λ Γ' → M (ΔweakenΓ Γ₁) Γ') (fact2 A₂ T) x
+ΔweakenM {_} {Γ₁} {A₁} (appU {_} {_} {T} M₁ A₂)
+  = let x = appU (ΔweakenM M₁) (ΔweakenA A₂)
+    in subst (λ Γ' → M (ΔweakenΓ Γ₁) Γ') (fact4 {_} {Γ₁} A₂ T) x
+-- ΔweakenM {_} {Γ₁} {A₁} (appU {_} {_} {T} M₁ A₂) = let x = appU (ΔweakenM M₁) (ΔweakenA A₁)
+                        -- in subst (λ Γ' → M (ΔweakenΓ Γ₁) Γ') (fact2 A₂ T) x
                         -- TODO: maybe apply fact2 to an arg rather than whole thing?
 ΔweakenM Y = Y
 ΔweakenM N = N

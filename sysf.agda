@@ -100,7 +100,7 @@ subVContext (ConsCtx Γ₁ T) (step icx) = ConsCtx (subVContext Γ₁ icx) T
 -- This is not finished, but it fails Agda termination check!
 
 -- subVValue : ∀{Δ₁ T} → {Γ₁ : Γ Δ₁} → (icx : InCtx Γ₁) → (Value (Γat icx) (Tat icx))
---   → (Value Γ T) → (Value (subVContext Γ₁ icx) T)
+--   → (Value Γ₁ T) → (Value (subVContext Γ₁ icx) T)
 -- subVUalue : ∀{Δ₁ T} → {Γ₁ : Γ Δ₁} → (icx : InCtx Γ₁) → (Value (Γat icx) (Tat icx))
 --   → (Ualue Γ₁ T) → (Value (subVContext Γ₁ icx) T)
 -- eval : ∀{Δ₁ Γ₁ A B} → Value {Δ₁} Γ₁ (arrow A B) → Value Γ₁ A → Value Γ₁ B

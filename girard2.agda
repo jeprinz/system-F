@@ -118,10 +118,6 @@ fact3 (step icx) = fact3 icx
 lemma1 : ∀{Δ₁} → {X Y Z Q : A Δ₁} → X ≡ Y → Z ≡ Q → (X ⇒ Z) ≡ (Y ⇒ Q)
 lemma1 refl refl = refl
 
-ap : ∀{l k} → {T : Set l} → {Y : Set k} → {x y : T}
-  → (f : T → Y) → (p : x ≡ y) → f x ≡ f y
-ap f refl = refl
-
 -- fact4g : ∀{Δ₁ itc} → {Γ₁ : Γ Δ₁} → (A₂ : A Δ₁) → ∀(T)
   -- → ΔsubA itc (ΔweakenA A₂) (ΔweakenA T) ≡ ΔweakenA (ΔsubA itc A₂ T)
 -- fact4g = ?
@@ -130,7 +126,7 @@ fact4 : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → (A₂ : A Δ₁) → ∀(T)
   → ΔsubA end (ΔweakenA same A₂) (ΔweakenA same T) ≡ ΔweakenA same (ΔsubA end A₂ T)
 fact4 A₂ (var x) = {!   !}
 fact4 {Δ₁} {Γ₁} A₂ (4all T) = let eq = fact4 {suc Δ₁} {ΔweakenΓ same Γ₁} (ΔweakenA same A₂) T
-                    in ap 4all {!   !}
+                    in cong 4all {!   !}
 fact4 {Δ₁} {Γ₁} A₂ (T₁ ⇒ T₂) = let eq1 = fact4 {Δ₁} {Γ₁} A₂ T₁
                       in let eq2 = fact4 {Δ₁} {Γ₁} A₂ T₂
                       in lemma1 eq1 eq2
@@ -142,14 +138,20 @@ fact4 A₂ 𝟚 = refl
 fact6 : ∀{Δins Δ₁} → {Γ₁ : Γ Δ₁} → (pre : Δins Δpre Δ₁) → ∀(A₁)
   → (ΔweakenA (next pre) (ΔweakenA same A₁)) ≡ (ΔweakenA same (ΔweakenA pre A₁))
 fact6 pre (var x) = {!   !}
-fact6 pre (4all A₁) = {!   !}
-fact6 pre (A₁ ⇒ A₂) = {!   !} -- use lemma1
+fact6 pre (4all A₁) = let eq = fact6 (next pre) A₁ in {!   !} -- NEED TO GENERALIZE :(
+fact6 {_} {_} {Γ₁} pre (A₁ ⇒ A₂)
+  = let eq1 = fact6 {_} {_} {Γ₁} pre A₁
+    in let eq2 = fact6 {_} {_} {Γ₁} pre A₂
+    in cong₂ (λ A₁ A₂ → A₁ ⇒ A₂) eq1 eq2
 fact6 pre 𝟚 = refl
 
 fact5 : ∀{Δins Δ₁} → {Γ₁ : Γ Δ₁} → (pre : Δins Δpre Δ₁)
   → ΔweakenΓ (next pre) (ΔweakenΓ same Γ₁) ≡ ΔweakenΓ same (ΔweakenΓ pre Γ₁)
 fact5 {_} {_} {EmptyCtx} pre = refl
-fact5 {_} {_} {ConsCtx Γ₁ A₁} pre = {!    !} -- recurse on Γ₁ and use fact6 on A₁
+fact5 {_} {_} {ConsCtx Γ₁ A₁} pre
+  = let eq1 = fact5 {_} {_} {Γ₁} pre
+    in let eq2 = fact6 {_} {_} {Γ₁} pre A₁
+    in cong₂ (λ Γ₁ A₁ → ConsCtx Γ₁ A₁) eq1 eq2
 
 
 ΔweakenM : ∀{Δins Δ₁ Γ₁ A₁} → (pre : Δins Δpre Δ₁) → M {Δ₁} Γ₁ A₁
@@ -160,7 +162,7 @@ fact5 {_} {_} {ConsCtx Γ₁ A₁} pre = {!    !} -- recurse on Γ₁ and use fa
 ΔweakenM {Δins} {Δ₁} {Γ₁} pre (var icx) = {!   !} -- generalize fact3 and copy old case below
 ΔweakenM pre (app M₁ M₂) = app (ΔweakenM pre M₁) (ΔweakenM pre M₂)
 ΔweakenM {_} {_} {Γ₁} pre (appU {_} {_} {T} M₁ A₂) = let x = appU (ΔweakenM pre M₁) (ΔweakenA pre A₂)
-                            in subst (λ Γ' → M (ΔweakenΓ pre Γ₁) Γ') ( {!   !} ) x
+                            in subst (λ Γ' → M (ΔweakenΓ pre Γ₁) Γ') ( {!   !} ) x -- generalize fact4 to use here
 ΔweakenM pre Y = Y
 ΔweakenM pre N = N
 -- ΔweakenM (lambda M₁) = lambda (ΔweakenM M₁)

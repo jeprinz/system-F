@@ -18,30 +18,32 @@ data Γ : Δ → Set where
   EmptyCtx : ∀ {Δ₁} → Γ Δ₁
   ConsCtx : ∀ {Δ₁} → (Γ₁ : Γ Δ₁) → A Δ₁ → Γ Δ₁
 
-data _Δpre_ : Δ → Δ → Set where
-  same : ∀{Δ₁} → Δ₁ Δpre Δ₁
-  next : ∀{Δ₁ Δ₂} → Δ₁ Δpre Δ₂ → Δ₁ Δpre (suc Δ₂)
+data Δpre : Δ → Set where -- represents a prefix Δ₁
+  same : ∀{Δ₁} → Δpre Δ₁
+  next : ∀{Δ₁} → Δpre Δ₁ → Δpre (suc Δ₁)
 
--- Insert a new type in context at Δins, ins=insert
+ΔpreAt : ∀{Δ₁} → Δpre Δ₁ → Δ
+ΔpreAt {Δ₁} same = Δ₁
+ΔpreAt (next pre) = ΔpreAt pre
 
 -- This really just adds one, but in a sufficiently typed way to
 -- make subsequent things easier
-ΔweakenΔ : {Δins Δ₁ : Δ} → Δins Δpre Δ₁ → Δ
-ΔweakenΔ {Δins} {Δ₁} same = suc Δ₁
+ΔweakenΔ : {Δ₁ : Δ} → Δpre Δ₁ → Δ
+ΔweakenΔ {Δ₁} same = suc Δ₁
 ΔweakenΔ (next pre) = suc (ΔweakenΔ pre)
 
-ΔweakenITC : ∀{Δins Δ₁} → (pre : Δins Δpre Δ₁) → InTypeCtx Δ₁ → InTypeCtx (ΔweakenΔ pre)
+ΔweakenITC : ∀{Δ₁} → (pre : Δpre Δ₁) → InTypeCtx Δ₁ → InTypeCtx (ΔweakenΔ pre)
 ΔweakenITC same itc = step itc
 ΔweakenITC (next pre) end = end
 ΔweakenITC (next pre) (step itc) = step (ΔweakenITC pre itc)
 
-ΔweakenA : ∀{Δins Δ₁} → (pre : Δins Δpre Δ₁) → A Δ₁ → A (ΔweakenΔ pre)
+ΔweakenA : ∀{Δ₁} → (pre : Δpre Δ₁) → A Δ₁ → A (ΔweakenΔ pre)
 ΔweakenA pre (var x) = var (ΔweakenITC pre x)
 ΔweakenA pre (4all A₁) = 4all (ΔweakenA (next pre) A₁)
 ΔweakenA pre (A₁ ⇒ A₂) = (ΔweakenA pre A₁) ⇒ (ΔweakenA pre A₂)
 ΔweakenA pre 𝟚 = 𝟚
 
-ΔweakenΓ : ∀{Δins Δ₁} → (pre : Δins Δpre Δ₁) → Γ Δ₁ → Γ (ΔweakenΔ pre)
+ΔweakenΓ : ∀{Δ₁} → (pre : Δpre Δ₁) → Γ Δ₁ → Γ (ΔweakenΔ pre)
 ΔweakenΓ pre EmptyCtx = EmptyCtx
 ΔweakenΓ pre (ConsCtx Γ₁ A₁) = ConsCtx (ΔweakenΓ pre Γ₁) (ΔweakenA pre A₁)
 
@@ -49,10 +51,13 @@ data InCtx : {Δ₁ : Δ} → Γ Δ₁ → Set where
   end : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → {T : A Δ₁} → InCtx (ConsCtx Γ₁ T)
   step : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → {Next : A Δ₁} → InCtx {Δ₁} Γ₁ → InCtx (ConsCtx Γ₁ Next)
 
-ΔweakenICX : ∀{Δins Δ₁} → (pre : Δins Δpre Δ₁) → {Γ₁ : Γ Δ₁}
+ΔweakenICX : ∀{Δ₁} → (pre : Δpre Δ₁) → {Γ₁ : Γ Δ₁}
   → InCtx Γ₁ → InCtx (ΔweakenΓ pre Γ₁)
 ΔweakenICX pre end = end
 ΔweakenICX pre (step icx) = step (ΔweakenICX pre icx)
+
+-- ΔweakenPre : ∀{Δins Δ₁} → (pre : Δins Δpre Δ₁) → ∀{Δins'}
+  -- → (toWeaken : Δins' Δpre Δ₁) →
 
 -- really just subtracts one
 ΔsubΔ : ∀{Δ₁} → InTypeCtx Δ₁ → Δ
@@ -135,33 +140,32 @@ fact4 A₂ 𝟚 = refl
 -- subWeakComm : ∀{} →
   -- → ΔsubA
 
-fact6 : ∀{Δins Δ₁} → {Γ₁ : Γ Δ₁} → (pre : Δins Δpre Δ₁) → ∀(A₁)
+fact6 : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → (pre : Δpre Δ₁) → ∀(A₁)
   → (ΔweakenA (next pre) (ΔweakenA same A₁)) ≡ (ΔweakenA same (ΔweakenA pre A₁))
 fact6 pre (var x) = {!   !}
-fact6 pre (4all A₁) = let eq = fact6 (next pre) A₁ in {!   !} -- NEED TO GENERALIZE :(
-fact6 {_} {_} {Γ₁} pre (A₁ ⇒ A₂)
-  = let eq1 = fact6 {_} {_} {Γ₁} pre A₁
-    in let eq2 = fact6 {_} {_} {Γ₁} pre A₂
+fact6 {_} {Γ₁} pre (4all A₁) = let eq = fact6 {_} {ΔweakenΓ same Γ₁} (next pre) A₁ in {!   !} -- NEED TO GENERALIZE :(
+fact6 {_} {Γ₁} pre (A₁ ⇒ A₂)
+  = let eq1 = fact6 {_} {Γ₁} pre A₁
+    in let eq2 = fact6 {_} {Γ₁} pre A₂
     in cong₂ (λ A₁ A₂ → A₁ ⇒ A₂) eq1 eq2
 fact6 pre 𝟚 = refl
 
-fact5 : ∀{Δins Δ₁} → {Γ₁ : Γ Δ₁} → (pre : Δins Δpre Δ₁)
+fact5 : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → (pre : Δpre Δ₁)
   → ΔweakenΓ (next pre) (ΔweakenΓ same Γ₁) ≡ ΔweakenΓ same (ΔweakenΓ pre Γ₁)
-fact5 {_} {_} {EmptyCtx} pre = refl
-fact5 {_} {_} {ConsCtx Γ₁ A₁} pre
-  = let eq1 = fact5 {_} {_} {Γ₁} pre
-    in let eq2 = fact6 {_} {_} {Γ₁} pre A₁
+fact5 {_} {EmptyCtx} pre = refl
+fact5 {_} {ConsCtx Γ₁ A₁} pre
+  = let eq1 = fact5 {_} {Γ₁} pre
+    in let eq2 = fact6 {_} {Γ₁} pre A₁
     in cong₂ (λ Γ₁ A₁ → ConsCtx Γ₁ A₁) eq1 eq2
 
-
-ΔweakenM : ∀{Δins Δ₁ Γ₁ A₁} → (pre : Δins Δpre Δ₁) → M {Δ₁} Γ₁ A₁
+ΔweakenM : ∀{Δ₁ Γ₁ A₁} → (pre : Δpre Δ₁) → M {Δ₁} Γ₁ A₁
   → M (ΔweakenΓ pre Γ₁) (ΔweakenA pre A₁)
 ΔweakenM pre (lambda M₁) = lambda (ΔweakenM pre M₁)
 ΔweakenM pre (Tlambda {_} {_} {T} M₁) = let weakM = ΔweakenM (next pre) M₁
                             in Tlambda (subst (λ Γ' → M Γ' (ΔweakenA (next pre) T)) (fact5 pre) weakM)
 ΔweakenM {Δins} {Δ₁} {Γ₁} pre (var icx) = {!   !} -- generalize fact3 and copy old case below
 ΔweakenM pre (app M₁ M₂) = app (ΔweakenM pre M₁) (ΔweakenM pre M₂)
-ΔweakenM {_} {_} {Γ₁} pre (appU {_} {_} {T} M₁ A₂) = let x = appU (ΔweakenM pre M₁) (ΔweakenA pre A₂)
+ΔweakenM {_} {Γ₁} pre (appU {_} {_} {T} M₁ A₂) = let x = appU (ΔweakenM pre M₁) (ΔweakenA pre A₂)
                             in subst (λ Γ' → M (ΔweakenΓ pre Γ₁) Γ') ( {!   !} ) x -- generalize fact4 to use here
 ΔweakenM pre Y = Y
 ΔweakenM pre N = N
@@ -179,6 +183,7 @@ fact5 {_} {_} {ConsCtx Γ₁ A₁} pre
 -- ΔweakenM N = N
 
 {-
+
 
 Γat : ∀{Δ₁ Γ₁} → InCtx {Δ₁} Γ₁ → Γ Δ₁
 Γat {_} {ConsCtx Γ₁ T} end = Γ₁

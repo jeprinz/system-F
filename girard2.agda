@@ -1,12 +1,17 @@
 open import Data.Nat
 open import Relation.Binary.PropositionalEquality
 
-Δ = ℕ
+------------ Step 1: define Δ and four type families Δ → Set, ITC, A, Γ, and Δpre
 
+Δ = ℕ
 -- same as Fin
 data InTypeCtx : Δ → Set where
   end : ∀{Γ₁} → InTypeCtx (suc Γ₁)
   step : ∀{Γ₁} → InTypeCtx Γ₁ → InTypeCtx (suc Γ₁)
+
+Δat : ∀{Δ₁} → (itc : InTypeCtx Δ₁) → Δ
+Δat {suc Δ₁} end = Δ₁
+Δat {suc Δ₁} (step itc) = Δat itc
 
 data A : Δ → Set where
   var : ∀{Δ₁} → InTypeCtx Δ₁ → A Δ₁
@@ -25,6 +30,11 @@ data Δpre : Δ → Set where -- represents a prefix Δ₁
 ΔpreAt : ∀{Δ₁} → Δpre Δ₁ → Δ
 ΔpreAt {Δ₁} same = Δ₁
 ΔpreAt (next pre) = ΔpreAt pre
+
+------------------- Step 2: define weakening for each family
+-- If P could be of Exp type, could define this and save a lot of work:
+-- ΔweakenAnything : ∀{P : Δ → Set} → ∀{Δ₁} → (pre : Δpre Δ₁) → P Δ₁ → P (ΔweakenΔ pre)
+-- ΔweakenAnything = {!   !}
 
 -- This really just adds one, but in a sufficiently typed way to
 -- make subsequent things easier
@@ -47,17 +57,12 @@ data Δpre : Δ → Set where -- represents a prefix Δ₁
 ΔweakenΓ pre EmptyCtx = EmptyCtx
 ΔweakenΓ pre (ConsCtx Γ₁ A₁) = ConsCtx (ΔweakenΓ pre Γ₁) (ΔweakenA pre A₁)
 
-data InCtx : {Δ₁ : Δ} → Γ Δ₁ → Set where
-  end : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → {T : A Δ₁} → InCtx (ConsCtx Γ₁ T)
-  step : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → {Next : A Δ₁} → InCtx {Δ₁} Γ₁ → InCtx (ConsCtx Γ₁ Next)
+ΔweakenΔpre : ∀{Δ₁} → (pre toWeaken : Δpre Δ₁) → Δpre (ΔweakenΔ pre)
+ΔweakenΔpre same toWeaken = next toWeaken
+ΔweakenΔpre (next pre) same = same
+ΔweakenΔpre (next pre) (next toWeaken) = next (ΔweakenΔpre pre toWeaken)
 
-ΔweakenICX : ∀{Δ₁} → (pre : Δpre Δ₁) → {Γ₁ : Γ Δ₁}
-  → InCtx Γ₁ → InCtx (ΔweakenΓ pre Γ₁)
-ΔweakenICX pre end = end
-ΔweakenICX pre (step icx) = step (ΔweakenICX pre icx)
-
--- ΔweakenPre : ∀{Δins Δ₁} → (pre : Δins Δpre Δ₁) → ∀{Δins'}
-  -- → (toWeaken : Δins' Δpre Δ₁) →
+--------------- Step 3: define substitution for some types (do I need it for more?)
 
 -- really just subtracts one
 ΔsubΔ : ∀{Δ₁} → InTypeCtx Δ₁ → Δ
@@ -67,10 +72,6 @@ data InCtx : {Δ₁ : Δ} → Γ Δ₁ → Set where
 -- data _prefixTC_ : Δ → Δ → Set where
 --   same : ∀{Δ₁} → Δ₁ prefixTC Δ₁
 --   next : ∀{Δ₁ Δ₁'} → Δ₁ prefixTC Δ₁' → Δ₁ prefixTC (suc Δ₁')
-
-Δat : ∀{Δ₁} → (itc : InTypeCtx Δ₁) → Δ
-Δat {suc Δ₁} end = Δ₁
-Δat {suc Δ₁} (step itc) = Δat itc
 
 ΔsubA : ∀{Δ₁} → (itc : InTypeCtx Δ₁)
   → (toSub : A (Δat itc)) → A Δ₁ → A (ΔsubΔ itc)
@@ -88,11 +89,39 @@ data InCtx : {Δ₁ : Δ} → Γ Δ₁ → Set where
 ΔsubΓ itc toSub EmptyCtx = EmptyCtx
 ΔsubΓ itc toSub (ConsCtx Γ₁ T)
   = ConsCtx (ΔsubΓ itc toSub Γ₁) (ΔsubA itc toSub T)
+  
+------------- Step 4: prove that weakening commutes with weakening
+
+­-- commWWΔ : ∀{Δ₁} → (pre₁ pre₂ : Δpre Δ₁) →
+--   ΔweakenΔ (ΔweakenΔpre pre₂ pre₁) (ΔweakenΔ pre₂)
+--     ≡ ΔweakenΔ (ΔweakenΔpre pre₁ pre₂) (ΔweakenΔ pre₁)
+-- commWWΔ = {!   !}
+
+-- TODO: what is Γ₁ for?
+-- commWWA : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → (pre₁ pre₂ : Δpre Δ₁) → ∀(A₁)
+  -- → (ΔweakenA (ΔweakenΔpre pre₂ pre₁) (ΔweakenA pre₁ A₁))
+    -- ≡ (ΔweakenA (ΔweakenΔpre pre₁ pre₂) (ΔweakenA pre₂ A₁))
+-- commWWA = ?
+
+------------- Step 5: prove that weakening commutes with substitution
+
+-- Above this line is stuff that depends on Δ
+------------------------------------------------------------------------
+-- Below this line is Δ and Γ
+
+data InCtx : {Δ₁ : Δ} → Γ Δ₁ → Set where
+  end : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → {T : A Δ₁} → InCtx (ConsCtx Γ₁ T)
+  step : ∀{Δ₁} → {Γ₁ : Γ Δ₁} → {Next : A Δ₁} → InCtx {Δ₁} Γ₁ → InCtx (ConsCtx Γ₁ Next)
 
 Tat : ∀{Δ₁ Γ₁} → InCtx {Δ₁} Γ₁ → A Δ₁
 Tat (end {_} {_} {T}) = T
 Tat (step icx) = Tat icx
 
+
+ΔweakenICX : ∀{Δ₁} → (pre : Δpre Δ₁) → {Γ₁ : Γ Δ₁}
+  → InCtx Γ₁ → InCtx (ΔweakenΓ pre Γ₁)
+ΔweakenICX pre end = end
+ΔweakenICX pre (step icx) = step (ΔweakenICX pre icx)
 
 data M : {Δ₁ : Δ} → Γ Δ₁ → A Δ₁ → Set where
   lambda : ∀{Δ₁ Γ₁ A B} → M {Δ₁} (ConsCtx Γ₁ A) B → M {Δ₁} Γ₁ (A ⇒ B)

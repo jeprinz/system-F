@@ -12,6 +12,8 @@ data Γ where
   ∅ : Γ
   _,_ : (Γ₁ : Γ) → Type Γ₁ → Γ
 
+  -- TODO: idea: consolidate InCtx and TInCtx into a single InCtx : Γ₁ → Type Γ₁ → Set
+  -- no, it already works like this, see 'T' argument below.
 data InCtx : Γ → Set where
   same : {Γ₁ : Γ} → {T : Type Γ₁} → InCtx (Γ₁ , T)
   next : {Γ₁ : Γ} → {Next : Type Γ₁} → InCtx Γ₁ → InCtx (Γ₁ , Next)
@@ -90,6 +92,7 @@ subEΓ {Γ₁ , T} (next icx) = (subEΓ icx , subET icx T)
 
 subET icx U₀ = U₀
 subET icx (var x) = {!   !}-- TODO: problem is that this can't be a TInCtx, but can't prove it
+  -- TODO: or can I prove it? try pattern matching on T arg to same
 subET icx (4all T) = 4all (subET (next icx) T)
 subET icx (arrow T T₁) = arrow (subET icx T) (subET icx T₁)
 

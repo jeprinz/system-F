@@ -70,8 +70,11 @@ data Exp : (Γ₁ : Γ) → (unqΓ Γ₁ → Set₁) → Set₁
 unq : ∀{Γ₁ T} → Exp Γ₁ T → (γ : unqΓ Γ₁) → T γ
 
 data Exp where
-    Lambda : {Γ₁ : Γ} → (A : Type Γ₁) → (B : Type (Γ₁ , A)) →
-      Exp (Γ₁ , A) (unqT B) → Exp Γ₁ (λ γ → ((x : unqT A γ) → unqT B (γ , x)))
+    -- TODO: maybe Lambda only needs to input A, and gets B from e
+    -- Lambda : {Γ₁ : Γ} → (A : Type Γ₁) → (B : Type (Γ₁ , A)) →
+      -- Exp (Γ₁ , A) (unqT B) → Exp Γ₁ (λ γ → ((x : unqT A γ) → unqT B (γ , x)))
+    ELambda : {Γ₁ : Γ} → (A B : Type Γ₁) →
+      Exp Γ₁ (unqT B) → Exp Γ₁ (unqET (arrow A B))
     Var : ∀{Γ} → (icx : InCtx Γ) → Exp Γ (λ γ → Tat icx γ)
     App : {Γ₁ : Γ} → (A : Type Γ₁) → (B : Type (Γ₁ , A)) →
         Exp Γ₁ (λ γ → (a : unqT A γ) → unqT B (γ , a))
@@ -81,17 +84,27 @@ proj : ∀{Γ₁} → (icx : InCtx Γ₁) → (γ : unqΓ Γ₁) → Tat icx γ
 proj same (γ , t) = t
 proj (next icx) (γ , _) = proj icx γ
 
-unq (Lambda _ _ e) γ = λ x → unq e (γ , x)
+-- unq (Lambda _ _ e) γ = λ x → unq e (γ , x)
+unq (ELambda _ _ e) γ = λ x → unq e γ
 unq (Var icx) γ = proj icx γ
 unq (App _ _ e e₁) γ = (unq e γ) (unq e₁ γ)
 
-idE : Exp ∅ (λ γ → (T : Set₀) → T → T)
-idE = Lambda (fromT U₀) (fromE (arrow (fromE (var same)) (fromE (var same)))) -- λ T . λ t . t
-        (Lambda (fromE (var same)) (fromE (var (next same))) (Var same))
+typeOf : ∀{Γ₁ T} → Exp Γ₁ T → Type Γ₁
+typeOf (ELambda A B e) = fromE (arrow A B)
+typeOf (Var icx) = fromE (var {!   !})
+typeOf (App A B e e₁) = B
+
+-- idE : Exp ∅ (λ γ → (T : Set₀) → T → T)
+-- idE = Lambda (fromT U₀) (fromE (arrow (fromE (var same)) (fromE (var same)))) -- λ T . λ t . t
+        -- (Lambda (fromE (var same)) (fromE (var (next same))) (Var same))
 
 Γat : ∀{Γ₁} → InCtx Γ₁ → Γ
 Γat {Γ , _} same = Γ
 Γat (next icx) = Γat icx
+
+TΓat : ∀{Γ₁} → TInCtx Γ₁ → Γ
+TΓat {Γ , _} same = Γ
+TΓat (next icx) = TΓat icx
 
 Tat' : ∀{Γ₁} → (icx : InCtx Γ₁) → Type (Γat icx)
 Tat' {_ , T} same = T
@@ -99,10 +112,56 @@ Tat' (next icx) = Tat' icx
 
 
 -- I'm going to need to define subTx and subEx, for x in the following list:
--- Γ, EType, TType, Type, InCtx, TInCtx, Exp
--- For the subTTinCtx and subEInCtx, I will need special cases that return toSub
+-- Γ, TType, EType, Type, InCtx, TInCtx, Exp
+-- Instead of subTTinCtx and subEInCtx, I will need special cases that return toSub
+-- in Type and Exp respectively.
+-- subTInCtx and subETinCtx will need to have contradiction cases that can't happen
 
 
+-- Type substituion
+
+subTΓ : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx)) → Γ
+subTTType : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+  → TType Γ₁ → TType (subTΓ ticx toSub)
+subTEType : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+  → EType Γ₁ → EType (subTΓ ticx toSub)
+subTType : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+  → Type Γ₁ → Type (subTΓ ticx toSub)
+subTInCtx : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+  → InCtx Γ₁ → InCtx (subTΓ ticx toSub)
+subTExp : ∀{Γ₁ T} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+  → Exp Γ₁ T → Exp (subTΓ ticx toSub) {!   !} -- (unqT (subTType ticx toSub T))
+
+-- subTΓ : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx)) → Γ
+subTΓ {Γ₁ , _} same _ = Γ₁
+subTΓ {Γ₁ , T} (next ticx) toSub = subTΓ ticx toSub , subTType ticx toSub T
+
+-- subTTType : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+--   → TType Γ₁ → TType (subTΓ ticx)
+subTTType ticx toSub U₀ = U₀
+
+-- subTType : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx)) -- TODO: note this definition needs to come before subTEType
+  -- → Type Γ₁ → Type (subTΓ ticx)
+subTType ticx toSub (fromE T) = fromE (subTEType ticx toSub T)
+subTType ticx toSub (fromT T) = fromT (subTTType ticx toSub T)
+-- subTEType : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+  -- → EType Γ₁ → EType (subTΓ ticx)
+subTEType ticx toSub (var x) = {!   !}
+subTEType ticx toSub (4all T) = 4all (subTType (next ticx) toSub T)
+subTEType ticx toSub (arrow T₁ T₂) = arrow (subTType ticx toSub T₁) (subTType ticx toSub T₂)
+
+-- subTInCtx : ∀{Γ₁} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+  -- → InCtx Γ₁ → InCtx (subTΓ ticx)
+-- Note that Agda can tell that same same case is impossible
+subTInCtx (next ticx) toSub same = same
+subTInCtx same toSub (next icx) = icx
+subTInCtx (next ticx) toSub (next icx) = next (subTInCtx ticx toSub icx)
+
+-- subTExp : ∀{Γ₁ T} → (ticx : TInCtx Γ₁) → (toSub : Type (TΓat ticx))
+  -- → Exp Γ₁ (unqT T) → Exp (subTΓ ticx) (unqT (subTType ticx toSub T))
+subTExp {_} {.(λ γ → unqT A γ → unqT B γ)} ticx toSub (ELambda A B e) = {!   !}
+subTExp {_} {.(Tat icx)} ticx toSub (Var icx) = {!   !}
+subTExp {_} {.(λ γ → unqT B (γ , unq e₁ γ))} ticx toSub (App A B e e₁) = {!   !}
 
 
 
